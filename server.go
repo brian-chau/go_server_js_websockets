@@ -78,7 +78,8 @@ func main() {
 	log.SetFlags(0)
 	http.HandleFunc("/", home)
 	http.HandleFunc("/handler", Handler)
+
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
-var homeTemplate = template.Must(template.ParseFiles("home.html"))
+var homeTemplate = template.Must(template.ParseFiles("home.html", "script.html"))
