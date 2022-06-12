@@ -1,2 +1,4 @@
 #!/bin/bash
+cd source
 go build server.go generateData.go
+cp server ..
