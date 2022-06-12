@@ -1,17 +1,12 @@
-// Copyright 2015 The Gorilla WebSocket Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-//go:build ignore
-// +build ignore
-
 package main
 
 import (
 	"flag"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,10 +14,44 @@ import (
 )
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
-
 var upgrader = websocket.Upgrader{} // use default options
+const TextType = 1
 
-func echo(w http.ResponseWriter, r *http.Request) {
+func SendDataToScreen(c *websocket.Conn, err error, generatedDataChannel chan []byte){
+	for {
+		dataToSend := <- generatedDataChannel
+		err = c.WriteMessage(TextType, dataToSend)
+		if err != nil {
+			log.Println("write:", err)
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func ReadDataFromScreen(c *websocket.Conn, err error) {
+	for {
+		_, message, err := c.ReadMessage()
+		cmd := strings.Split(string(message), "=")
+
+		switch cmd[0] {
+			case "something":
+				fmt.Printf("Doing something with %s\n", cmd[1])
+			case "somethingElse":
+				fmt.Printf("Doing something else with %s\n", cmd[1])
+			default:
+				fmt.Printf("Unsupported cmd %s\n", cmd[0])
+		}
+
+		if err != nil {
+			log.Println("read:", err)
+			break
+		}
+		log.Printf("recv: %s\n", message)
+	}
+}
+
+func Handler(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Print("upgrade:", err)
@@ -30,41 +59,25 @@ func echo(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func(c *websocket.Conn, err error){
-		for {
-			err = c.WriteMessage(1, []byte("Hello world"))
-			if err != nil {
-				log.Println("write:", err)
-				break
-			}
-			time.Sleep(1 * time.Second)
-		}
-	}(c, err)
+	generatedDataChannel := make(chan []byte)
 
-	go func(c *websocket.Conn, err error) {
-		for {
-			_, message, err := c.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
-				break
-			}
-			log.Printf("recv: %s", message)
-		}
-	}(c, err)
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go SendDataToScreen(c, err, generatedDataChannel)
+	go ReadDataFromScreen(c, err)
+	go GenerateData(generatedDataChannel)
 	wg.Wait()
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
-	homeTemplate.Execute(w, "ws://"+r.Host+"/echo")
+	homeTemplate.Execute(w, "ws://"+r.Host+"/handler")
 }
 
 func main() {
 	flag.Parse()
 	log.SetFlags(0)
-	http.HandleFunc("/echo", echo)
 	http.HandleFunc("/", home)
+	http.HandleFunc("/handler", Handler)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 

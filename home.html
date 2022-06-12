@@ -26,26 +26,51 @@
                         ws = null;
                     }
                     ws.onmessage = function(evt) {
-                        print("RESPONSE: " + evt.data);
+                        let field = evt.data.split("=");
+                        let name = field[0];
+                        let value = field[1];
+                        print("Field: " + name);
+                        print("Value: " + value);
                     }
                     ws.onerror = function(evt) {
                         print("ERROR: " + evt.data);
                     }
                     return false;
                 };
-                document.getElementById("send").onclick = function(evt) {
+
+                document.getElementById("something").onclick = function(evt) {
                     if (!ws) {
                         return false;
                     }
-                    print("SEND: " + input.value);
-                    ws.send(input.value);
+                    let cmd = "something=" + input.value;
+                    print(cmd);
+                    ws.send(cmd);
                     return false;
                 };
+
+                document.getElementById("somethingElse").onclick = function(evt) {
+                    if (!ws) {
+                        return false;
+                    }
+                    let cmd = "somethingElse=" + input.value;
+                    print(cmd);
+                    ws.send(cmd);
+                    return false;
+                };
+
                 document.getElementById("close").onclick = function(evt) {
                     if (!ws) {
                         return false;
                     }
                     ws.close();
+                    return false;
+                };
+
+                document.getElementById("clear").onclick = function(evt) {
+                    if (!ws) {
+                        return false;
+                    }
+                    output.innerHTML = "";
                     return false;
                 };
             });
@@ -63,7 +88,9 @@
                     <button id="open">Open</button>
                     <button id="close">Close</button>
                     <input id="input" type="text" value="Hello world!"><br/>
-                    <button id="send">Send</button>
+                    <button id="something">Something</button>
+                    <button id="somethingElse">Something else</button>
+                    <button id="clear">Clear</button>
                 </td>
                 <td valign="top" width="50%">
                     <div id="output" style="max-height: 70vh;overflow-y: scroll;"></div>
